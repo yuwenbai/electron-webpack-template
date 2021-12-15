@@ -1,0 +1,171 @@
+
+const builder = require("electron-builder");
+const PackageJSON = require("../package.json");
+const PEPPA_APP_TYPE = "student";
+
+// const platform = process.platform; // TODO
+const platform = process.env.PEPPA_PLATFORM || process.platform; // TODO
+const PEPPA_ENV = process.env.PEPPA_ENV || 'qa';
+const { CI_PROJECT_DIR } = process.env;
+const CI_JOB_ID = process.env.CI_JOB_ID || 0;
+
+if (!PEPPA_ENV) {
+    throw new Error("请指定 PEPPA_ENV  编译的目标环境(qa|sim|online)");
+}
+
+function getName() {
+    return `spark-programming-pc`;
+}
+
+function getAppID() {
+    return `com.xingengyuan.${getName()}`;
+}
+
+function getVersion() {
+    let version = PackageJSON.version;
+    // let version = '2222.222.22'
+    if (PEPPA_ENV == "qa") {
+        return `${version}-alpha.${CI_JOB_ID}`;
+    }
+
+    if (PEPPA_ENV == "sim") {
+        return `${version}-beta.${CI_JOB_ID}`;
+    }
+
+    return version;
+}
+function getProductName() {
+    let envSurffix = {
+        qa: " - QA版",
+        sim: " - SIM版",
+        online: "",
+    }[PEPPA_ENV];
+    return `火${envSurffix}`;
+}
+
+function getPublishURL() {
+    if (platform == "darwin") {
+        return `https://img.txqn.test.cn/${PEPPA_ENV}/spark-programming-pc-${PEPPA_APP_TYPE}-signed-mac/`;
+    } else {
+        return `https://img.txqn.test.cn/${PEPPA_ENV}/spark-programming-pc-${PEPPA_APP_TYPE}-signed/`;
+    }
+}
+
+function getOutputDirectory() {
+    return `dist/${PEPPA_ENV}/${PEPPA_APP_TYPE}`;
+}
+
+function getBuildVersion() {
+    return process.env.CI_JOB_ID;
+}
+
+function getPlatformConfig() {
+    const platforms = process.env.PEPPA_PLATFORM || process.platform; // TODO
+    if (platforms == "darwin") {
+        return {
+            mac: ["dmg", "zip"],
+        };
+    } else if (platforms == "win32") {
+        return {
+            win: ["nsis"],
+            ia32: true,
+            x64: true
+        };
+    } else {
+        throw new Error("不支持的编译平台");
+    }
+}
+
+function getClientProtocol() {
+    let envSurffix = {
+        qa: "-qa",
+        sim: "-sim",
+        online: "",
+    }[PEPPA_ENV];
+    return `test-${PEPPA_APP_TYPE}${envSurffix}`;
+}
+
+builder
+    .build({
+        config: {
+            files: [
+                "./../src/**"
+            ],
+            protocols: [
+                {
+                    name: getClientProtocol(),
+                    schemes: ["irc", "ircs"],
+                },
+            ],
+            publish: {
+                provider: "generic",
+                url: getPublishURL(),
+            },
+            appId: getAppID(),
+            extraMetadata: {
+                name: getName(),
+                version: getVersion(),
+            },
+
+            directories: {
+                output: getOutputDirectory(),
+            },
+            extends: null ,
+            forceCodeSigning: false,
+            productName: getProductName(),
+            artifactName: "${productName}-${version}.${ext}",
+            buildVersion: getBuildVersion(),
+            win: {
+                verifyUpdateCodeSignature: false,
+                signingHashAlgorithms: ["sha256"],
+                certificateSha1: '01584B9E729721F270D17C1C7DBFB1174AD4BF54',
+                signDlls: true,
+                rfc3161TimeStampServer: "http://timestamp.digicert.com",
+                sign: '.bin/sign.js',
+            },
+            nsis: {
+                deleteAppDataOnUninstall: true,
+                createStartMenuShortcut: false,
+                createDesktopShortcut: "always",
+            },
+            "icon": "./resources/app.png",
+            mac: {
+                "type": "distribution",
+                "target": "default",
+                "minimumSystemVersion": "10.10",
+                "entitlements": "resources/entitlements.mac.plist",
+                "extendInfo": {
+                    "NSCameraUsageDescription": "请允许本程序访问您的摄像头",
+                    "NSMicrophoneUsageDescription": "请允许本程序访问您的麦克风"
+                }
+            },
+            dmg: {
+                iconSize: 100,
+                iconTextSize: 9,
+                contents: [
+                    {
+                        x: 376 + 50,
+                        y: 145 + 40 + 2,
+                        type: "link",
+                        name: "Applications",
+                        path: "/Applications",
+                    },
+                    {
+                        x: 102 + 50,
+                        y: 145 + 40 + 5,
+                        type: "file",
+                    },
+                ],
+            },
+            generateUpdatesFilesForAllChannels: PEPPA_ENV != "online",
+        },
+        publish: "always",
+        ...getPlatformConfig(),
+    })
+    .then((result) => {
+        console.log("done");
+    })
+    .catch((ex) => {
+        console.error(ex);
+        process.exit(1);
+    });

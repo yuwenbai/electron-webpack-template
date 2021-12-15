@@ -1,0 +1,4 @@
+provider: generic
+url: https://img.txqn.test.cn/qa/spark-programming-pc-student-signed-mac/
+channel: alpha
+updaterCacheDirName: spark-programming-pc-updater

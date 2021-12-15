@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+const path = require("path");
+const rimraf = require("rimraf");
+const PEPPA_APP_TYPE = "student";
+
+const { PEPPA_ENV, CI_PROJECT_DIR } = process.env;
+
+rimraf.sync(
+    path.resolve(`${CI_PROJECT_DIR}/dist/${PEPPA_ENV}/${PEPPA_APP_TYPE}`)
+);
